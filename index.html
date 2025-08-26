@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Months of the Year</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f7fb;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .screen { display: none; text-align: center; }
+    #startScreen { display: block; }
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,.1);
+      width: 800px;
+    }
+    h1 { margin-top: 0; }
+    p { color: #555; }
+    .btn {
+      background: #007BFF;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .layout {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-top: 20px;
+    }
+    .list, .grid {
+      display: grid;
+      gap: 6px;
+    }
+    .list {
+      grid-template-rows: repeat(12, 1fr);
+    }
+    .grid {
+      grid-template-rows: repeat(12, 1fr);
+    }
+    .cell, .chip {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 6px;
+      font-weight: bold;
+      font-size: 14px;
+      text-align: center;
+      min-width: 110px;
+      height: 32px;
+      line-height: 32px;
+      cursor: grab;
+    }
+    .chip.used { opacity: 0.5; cursor: not-allowed; }
+    .cell.correct {
+      background: #d1fae5;
+      border-color: #16a34a;
+      color: #065f46;
+    }
+    #goodJob {
+      display: none;
+      font-size: 4em;
+      color: #16a34a;
+      margin-top: 20px;
+      font-weight: bold;
+    }
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+<div id="startScreen" class="screen">
+  <div class="card">
+    <h1>Months of the Year</h1>
+    <p>Drag the English months (left) into the matching Spanish months (right).</p>
+    <button class="btn" onclick="startGame()">Start</button>
+  </div>
+</div>
+
+<div id="gameScreen" class="screen">
+  <div class="card">
+    <h1>Months of the Year</h1>
+    <div class="layout">
+      <div id="englishList" class="list"></div>
+      <div id="spanishGrid" class="grid"></div>
+    </div>
+    <p><button class="btn" onclick="restartGame()">Restart</button></p>
+    <div id="goodJob">GOOD JOB!</div>
+  </div>
+</div>
+
+<canvas id="confetti"></canvas>
+
+<script>
+const EN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+let matches = 0;
+let confettiInterval;
+
+function startGame(){
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('gameScreen').style.display = 'block';
+  initGame();
+}
+
+function initGame(){
+  matches = 0;
+  document.getElementById('goodJob').style.display = 'none';
+  stopConfetti();
+  const englishList = document.getElementById('englishList');
+  const spanishGrid = document.getElementById('spanishGrid');
+  englishList.innerHTML = '';
+  spanishGrid.innerHTML = '';
+
+  EN.forEach((m) => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.textContent = m;
+    chip.setAttribute('data-en', m);
+    chip.draggable = true;
+    chip.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', m));
+    englishList.appendChild(chip);
+  });
+
+  ES.slice().sort(()=>Math.random()-0.5).forEach((m) => {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.textContent = m;
+    cell.setAttribute('data-es', m);
+    cell.addEventListener('dragover', e => e.preventDefault());
+    cell.addEventListener('drop', e => dropHandler(e, cell));
+    spanishGrid.appendChild(cell);
+  });
+}
+
+function dropHandler(e, cell){
+  e.preventDefault();
+  if(cell.classList.contains('correct')) return;
+  const enName = e.dataTransfer.getData('text/plain');
+  const esName = cell.getAttribute('data-es');
+  const idx = EN.indexOf(enName);
+  if(idx!==-1 && ES[idx]===esName){
+    cell.classList.add('correct');
+    const chip = [...document.querySelectorAll('.chip')].find(c => c.getAttribute('data-en')===enName);
+    chip.classList.add('used'); chip.draggable=false;
+    matches++;
+    if(matches===12) celebrate();
+  }
+}
+
+function celebrate(){
+  document.getElementById('goodJob').style.display='block';
+  startConfetti();
+}
+
+function restartGame(){ initGame(); }
+
+function startConfetti(){
+  const canvas = document.getElementById('confetti');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  let confetti = [];
+  for (let i = 0; i < 300; i++) {
+    confetti.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height - canvas.height,
+      r: Math.random() * 6 + 4,
+      d: Math.random() * 0.5 + 0.5,
+      color: "hsl(" + Math.random() * 360 + ", 100%, 50%)",
+    });
+  }
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    confetti.forEach(c=>{
+      ctx.beginPath();
+      ctx.arc(c.x,c.y,c.r,0,Math.PI*2,false);
+      ctx.fillStyle=c.color;
+      ctx.fill();
+      c.y+=c.d;
+      if(c.y>canvas.height){
+        c.y=-10;c.x=Math.random()*canvas.width;
+      }
+    });
+  }
+  confettiInterval = setInterval(draw, 20);
+}
+function stopConfetti(){
+  clearInterval(confettiInterval);
+  const canvas=document.getElementById('confetti');
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+}
+</script>
+</body>
+</html>
